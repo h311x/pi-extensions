@@ -1,0 +1,6 @@
+{
+  "description": "Creative roleplay and collaborative storytelling",
+  "icon": "🎭",
+  "thinkingLevel": "medium",
+  "tools": ["finish_character", "ask_user"]
+}

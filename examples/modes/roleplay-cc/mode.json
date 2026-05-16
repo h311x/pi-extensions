@@ -1,0 +1,6 @@
+{
+  "description": "Roleplay character creation",
+  "icon": "🧬",
+  "thinkingLevel": "medium",
+  "tools": ["finish_character", "ask_user"]
+}

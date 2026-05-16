@@ -47,28 +47,38 @@ Undo/redo commands for pi sessions.
 
 ## Installation
 
-### Via `pi install` (recommended)
+### Manual (recommended for development)
+
+Copy the extension directories into your pi agent extensions folder:
 
 ```bash
-pi install git:github.com/youruser/pi-extensions
+cp -r extensions/pi-modes ~/.pi/agent/extensions/
+cp -r extensions/pi-roleplay ~/.pi/agent/extensions/
+cp -r extensions/pi-session-viewer ~/.pi/agent/extensions/
+cp -r extensions/pi-undo-redo ~/.pi/agent/extensions/
 ```
 
 Then restart pi or run `/reload`.
 
-Updates:
+### Via `pi install`
+
+```bash
+pi install ssh://git@github.com/h311x/pi-extensions.git
+```
+
+Then restart pi or run `/reload`.
+
+**Updates:**
 ```bash
 pi update
 ```
 
-### Manual
-
-Copy the `extensions/` directory into your pi agent directory:
-
+**Uninstall:**
 ```bash
-cp -r extensions/* ~/.pi/agent/extensions/
+pi remove ssh://git@github.com/h311x/pi-extensions.git
 ```
 
-Then restart pi or run `/reload`.
+> **Note:** The `git:` shorthand (`git:github.com/user/repo`) may be converted to an invalid HTTPS URL. Use the full `ssh://` or `https://` URL format.
 
 ## Starter modes
 
@@ -120,6 +130,37 @@ Modes are configured in `~/.pi/agent/modes/<name>/`:
 
 Always replaces the default system prompt entirely. Must be present in every mode directory.
 
-## Character data
+## Data directories
 
-Saved roleplay characters are stored at `~/.pi/agent/pi-roleplay/characters/` and are **not** included in this package — they are created at runtime via the `finish_character` tool.
+These directories are created and managed at runtime. They are **not** part of this package and persist across installs/removals.
+
+| Data | Location | Created by |
+|------|----------|-----------|
+| Mode configs | `~/.pi/agent/modes/` | You (or `/skill:create-mode`) |
+| Mode settings | `~/.pi/agent/modes/settings.json` | `/default-mode` command |
+| Characters | `~/.pi/agent/pi-roleplay/characters/` | `finish_character` tool |
+
+## Development
+
+This repo is structured as a pi package monorepo with conventional directories:
+
+```
+pi-extensions/
+├── package.json              ← root manifest (extensions + skills paths)
+├── extensions/
+│   ├── pi-modes/
+│   ├── pi-roleplay/
+│   ├── pi-session-viewer/
+│   └── pi-undo-redo/
+└── examples/
+    └── modes/
+```
+
+Each extension has its own `package.json` with a `pi` manifest, making it self-contained for both monorepo install and manual auto-discovery.
+
+### Making changes
+
+1. Edit files in `~/Projects/pi-extensions/`
+2. Commit and push
+3. On machines using `pi install`: run `pi update`
+4. On machines using manual copy: re-copy and `/reload`

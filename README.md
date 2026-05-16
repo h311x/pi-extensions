@@ -63,7 +63,7 @@ Then restart pi or run `/reload`.
 ### Via `pi install`
 
 ```bash
-pi install ssh://git@github.com/h311x/pi-extensions.git
+pi install git:github.com/h311x/pi-extensions
 ```
 
 Then restart pi or run `/reload`.
@@ -75,7 +75,7 @@ pi update
 
 **Uninstall:**
 ```bash
-pi remove ssh://git@github.com/h311x/pi-extensions.git
+pi remove git:github.com/h311x/pi-extensions
 ```
 
 > **Note:** The `git:` shorthand (`git:github.com/user/repo`) may be converted to an invalid HTTPS URL. Use the full `ssh://` or `https://` URL format.

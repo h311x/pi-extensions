@@ -1,9 +1,10 @@
 {
   "name": "pi-extensions",
   "version": "1.0.0",
-  "description": "Custom pi extensions: agent modes, roleplay tools, session viewer, and undo/redo",
+  "description": "Custom pi extensions: agent modes, roleplay tools, session viewer, undo/redo, web search/fetch, and wiki tools",
   "private": true,
   "keywords": ["pi-package"],
+  "workspaces": ["extensions/*"],
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",

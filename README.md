@@ -37,6 +37,20 @@ Interactive session browser with keyboard navigation.
 - `/sessions all` — Browse all sessions across all projects
 - `Ctrl+Shift+S` — Keyboard shortcut to open session viewer
 
+### pi-web
+
+Web search and fetch tools using DuckDuckGo and Mozilla Readability. Zero API costs.
+
+**Tools:**
+- `web_search` — Search the web via DuckDuckGo, returns up to 10 results with title, URL, and snippet
+- `web_fetch` — Fetch a URL and extract main content (strips nav, sidebars, ads); also supports markdown, JSON, XML, and plain text
+
+> **Note:** This extension requires `@mozilla/readability` and `jsdom` as npm dependencies. They are installed automatically via npm workspaces (see [Development](#development)).
+
+### pi-wiki
+
+Local wiki tools for scraping and searching documentation.
+
 ### pi-undo-redo
 
 Undo/redo commands for pi sessions.
@@ -142,25 +156,30 @@ These directories are created and managed at runtime. They are **not** part of t
 
 ## Development
 
-This repo is structured as a pi package monorepo with conventional directories:
+This repo is structured as a pi package monorepo with npm workspaces:
 
 ```
 pi-extensions/
-├── package.json              ← root manifest (extensions + skills paths)
+├── package.json              ← root manifest (extensions + skills + workspaces)
 ├── extensions/
 │   ├── pi-modes/
 │   ├── pi-roleplay/
 │   ├── pi-session-viewer/
-│   └── pi-undo-redo/
+│   ├── pi-undo-redo/
+│   ├── pi-web/               ← has its own package.json with npm dependencies
+│   └── pi-wiki/
 └── examples/
     └── modes/
 ```
 
-Each extension has its own `package.json` with a `pi` manifest, making it self-contained for both monorepo install and manual auto-discovery.
+The root `package.json` declares `"workspaces": ["extensions/*"]` so that `npm install` at the repo root also installs dependencies for each extension sub-package (e.g. `@mozilla/readability` and `jsdom` for `pi-web`).
+
+When installed via `pi install`, pi runs `npm install` at the repo root after cloning — the workspaces config ensures extension-level dependencies are resolved correctly.
 
 ### Making changes
 
 1. Edit files in `~/Projects/pi-extensions/`
-2. Commit and push
-3. On machines using `pi install`: run `pi update`
-4. On machines using manual copy: re-copy and `/reload`
+2. If you added/changed npm dependencies in an extension, run `npm install` at the repo root
+3. Commit and push
+4. On machines using `pi install`: run `pi update`
+5. On machines using manual copy: re-copy and `/reload`

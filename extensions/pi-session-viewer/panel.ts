@@ -50,6 +50,7 @@ export class SessionViewerPanel {
 	private selected = 0;
 	private scroll = 0;
 	private pendingRemovePath: string | undefined;
+	private removing = false;
 
 	constructor(
 		private sessions: SessionInfo[],
@@ -70,6 +71,8 @@ export class SessionViewerPanel {
 	handleInput(data: string): void {
 		const filtered = this.filtered();
 
+		if (this.removing) return;
+
 		if (this.pendingRemovePath) {
 			if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl("c")) || data === "q" || data === "n" || data === "N") {
 				this.pendingRemovePath = undefined;
@@ -80,12 +83,17 @@ export class SessionViewerPanel {
 			if (matchesKey(data, Key.enter) || data === "y" || data === "Y") {
 				const path = this.pendingRemovePath;
 				this.pendingRemovePath = undefined;
-				void this.removeSession(path).then((removed) => {
-					if (!removed) return;
-					this.sessions = this.sessions.filter((session) => session.path !== path);
-					this.selected = Math.min(this.selected, Math.max(0, this.sessions.length - 1));
-					this.requestRender();
-				});
+				this.removing = true;
+				void this.removeSession(path)
+					.then((removed) => {
+						if (!removed) return;
+						this.sessions = this.sessions.filter((session) => session.path !== path);
+						this.selected = Math.min(this.selected, Math.max(0, this.sessions.length - 1));
+					})
+					.finally(() => {
+						this.removing = false;
+						this.requestRender();
+					});
 				this.requestRender();
 				return;
 			}
@@ -147,9 +155,11 @@ export class SessionViewerPanel {
 		const lines: string[] = [];
 		lines.push(theme.fg("accent", theme.bold(this.scope === "all" ? "Sessions (all projects)" : "Sessions")));
 		lines.push(
-			this.pendingRemovePath
-				? theme.fg("warning", "Remove selected session? enter/y confirm · n/esc cancel")
-				: theme.fg("dim", "↑↓ navigate · enter switch · r remove · q/esc close"),
+			this.removing
+				? theme.fg("warning", "Removing session...")
+				: this.pendingRemovePath
+					? theme.fg("warning", "Remove selected session? enter/y confirm · n/esc cancel")
+					: theme.fg("dim", "↑↓ navigate · enter switch · r remove · q/esc close"),
 		);
 		lines.push(theme.fg("borderMuted", "─".repeat(Math.max(1, width))));
 

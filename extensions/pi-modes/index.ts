@@ -39,6 +39,7 @@ export default function modesExtension(pi: ExtensionAPI) {
 	let activeModeName = "default";
 	let activeMode: ModeConfig = DEFAULT_MODE;
 	let originalState: OriginalState | undefined;
+	let lastPersistedModeName: string | undefined;
 
 	// ----- Mode application -----
 
@@ -68,7 +69,7 @@ export default function modesExtension(pi: ExtensionAPI) {
 					model = ctx.modelRegistry.find(provider!, modelId);
 				} else {
 					// Search across all providers
-					for (const provider of ctx.modelRegistry.getProviders()) {
+					for (const provider of ((ctx.modelRegistry as any).getProviders?.() ?? [])) {
 						model = ctx.modelRegistry.find(provider, mode.model);
 						if (model) break;
 					}
@@ -289,6 +290,8 @@ export default function modesExtension(pi: ExtensionAPI) {
 
 	// Persist mode on each turn so it survives resume
 	pi.on("turn_start", async () => {
+		if (lastPersistedModeName === activeModeName) return;
 		pi.appendEntry("mode-state", { name: activeModeName });
+		lastPersistedModeName = activeModeName;
 	});
 }

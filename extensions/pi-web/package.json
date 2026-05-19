@@ -1,6 +1,11 @@
 {
   "name": "pi-web-extension",
+  "version": "1.0.0",
   "private": true,
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
     "jsdom": "^26.0.0"

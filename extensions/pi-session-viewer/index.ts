@@ -23,9 +23,14 @@ async function showSessions(ctx: ExtensionContext, scope: Scope): Promise<void> 
 						ctx.ui.notify("Cannot remove the current session", "warning");
 						return false;
 					}
-					await unlink(path);
-					ctx.ui.notify("Session removed", "info");
-					return true;
+					try {
+						await unlink(path);
+						ctx.ui.notify("Session removed", "info");
+						return true;
+					} catch (err) {
+						ctx.ui.notify(`Failed to remove session: ${err instanceof Error ? err.message : String(err)}`, "error");
+						return false;
+					}
 				},
 			),
 		{
@@ -43,7 +48,7 @@ async function showSessions(ctx: ExtensionContext, scope: Scope): Promise<void> 
 	if (!action) return;
 
 	if (action.type === "switch" && action.path !== ctx.sessionManager.getSessionFile()) {
-		await ctx.switchSession(action.path);
+		await (ctx as any).switchSession(action.path);
 		return;
 	}
 }

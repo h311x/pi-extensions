@@ -12,6 +12,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
+import { isIP } from "node:net";
 
 // ── Types ───────────────────────────────────────
 
@@ -269,7 +270,47 @@ function isHttpUrl(url: string): boolean {
   return url.startsWith("http://") || url.startsWith("https://");
 }
 
+function isPrivateHostname(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (["localhost", "127.0.0.1", "::1"].includes(lower)) return true;
+  const type = isIP(hostname);
+  if (!type) return false;
+  if (type === 4) {
+    const [a, b] = hostname.split(".").map((n) => Number.parseInt(n, 10));
+    if (a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+  }
+  if (type === 6) {
+    const n = hostname.toLowerCase();
+    if (n === "::1") return true;
+    if (n.startsWith("fc") || n.startsWith("fd") || n.startsWith("fe80")) return true;
+  }
+  return false;
+}
+
 const MAX_FETCH_LENGTH = 30_000;
+const MAX_BODY_BYTES = 2_000_000;
+
+async function readBodyWithLimit(response: Response, maxBytes: number): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) return response.text();
+  let bytes = 0;
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      reader.cancel().catch(() => undefined);
+      throw new Error(`Response too large (${bytes} bytes)`);
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
 
 function truncateText(text: string): { text: string; truncated: boolean } {
   if (text.length <= MAX_FETCH_LENGTH) return { text, truncated: false };
@@ -295,7 +336,7 @@ export default function webExtension(pi: ExtensionAPI) {
       query: Type.String({ description: "Search query" }),
     }),
 
-    async execute(_toolCallId, params, signal) {
+    async execute(_toolCallId, params, signal, _onUpdate, _ctx): Promise<any> {
       const url = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(params.query)}`;
       const { controller, clear } = createTimeoutSignal(10_000, signal);
 
@@ -361,7 +402,7 @@ export default function webExtension(pi: ExtensionAPI) {
       url: Type.String({ description: "URL to fetch (http or https)" }),
     }),
 
-    async execute(_toolCallId, params, signal) {
+    async execute(_toolCallId, params, signal, _onUpdate, _ctx): Promise<any> {
       const url = params.url.trim();
 
       if (!isHttpUrl(url)) {
@@ -370,6 +411,24 @@ export default function webExtension(pi: ExtensionAPI) {
             { type: "text", text: `Invalid URL: only http:// and https:// are allowed. Got: ${url}` },
           ],
           details: { error: "invalid_protocol", url },
+          isError: true,
+        };
+      }
+
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        return {
+          content: [{ type: "text", text: `Invalid URL: ${url}` }],
+          details: { error: "invalid_url", url },
+          isError: true,
+        };
+      }
+      if (isPrivateHostname(parsed.hostname)) {
+        return {
+          content: [{ type: "text", text: `Blocked private/local host: ${parsed.hostname}` }],
+          details: { error: "blocked_host", url },
           isError: true,
         };
       }
@@ -392,6 +451,14 @@ export default function webExtension(pi: ExtensionAPI) {
         }
 
         const contentType = response.headers.get("content-type") || "";
+        const contentLength = Number.parseInt(response.headers.get("content-length") || "0", 10);
+        if (contentLength > MAX_BODY_BYTES) {
+          return {
+            content: [{ type: "text", text: `Response too large (${contentLength} bytes).` }],
+            details: { error: "response_too_large", url, contentLength },
+            isError: true,
+          };
+        }
 
         // ── Markdown / plain text: return as-is ──
         if (
@@ -399,7 +466,7 @@ export default function webExtension(pi: ExtensionAPI) {
           contentType.includes("text/plain") ||
           contentType.includes("text/x-markdown")
         ) {
-          const raw = await response.text();
+          const raw = await readBodyWithLimit(response, MAX_BODY_BYTES);
           const { text, truncated } = truncateText(raw);
           return {
             content: [{ type: "text", text }],
@@ -415,7 +482,7 @@ export default function webExtension(pi: ExtensionAPI) {
 
         // ── JSON: pretty-print as markdown ──
         if (contentType.includes("application/json") || contentType.includes("text/json")) {
-          const raw = await response.text();
+          const raw = await readBodyWithLimit(response, MAX_BODY_BYTES);
           const rendered = jsonToMarkdown(raw);
           const { text, truncated } = truncateText(rendered);
           return {
@@ -437,7 +504,7 @@ export default function webExtension(pi: ExtensionAPI) {
           contentType.includes("application/rss") ||
           contentType.includes("application/atom")
         ) {
-          const raw = await response.text();
+          const raw = await readBodyWithLimit(response, MAX_BODY_BYTES);
           const rendered = xmlToMarkdown(raw);
           const { text, truncated } = truncateText(rendered);
           return {
@@ -454,7 +521,7 @@ export default function webExtension(pi: ExtensionAPI) {
 
         // ── HTML: extract with Readability ──
         if (contentType.includes("text/html")) {
-          const html = await response.text();
+          const html = await readBodyWithLimit(response, MAX_BODY_BYTES);
 
           const doc = new JSDOM(html, { url });
           const reader = new Readability(doc.window.document);

@@ -51,6 +51,12 @@ Web search and fetch tools using DuckDuckGo and Mozilla Readability. Zero API co
 
 Local wiki tools for scraping and searching documentation.
 
+**Command:**
+- `/wiki <url>` — Scrape docs into local wiki
+
+**Tool:**
+- `wiki_search` — Search local wiki entries by relevance
+
 ### pi-undo-redo
 
 Undo/redo commands for pi sessions.
@@ -70,6 +76,8 @@ cp -r extensions/pi-modes ~/.pi/agent/extensions/
 cp -r extensions/pi-roleplay ~/.pi/agent/extensions/
 cp -r extensions/pi-session-viewer ~/.pi/agent/extensions/
 cp -r extensions/pi-undo-redo ~/.pi/agent/extensions/
+cp -r extensions/pi-web ~/.pi/agent/extensions/
+cp -r extensions/pi-wiki ~/.pi/agent/extensions/
 ```
 
 Then restart pi or run `/reload`.

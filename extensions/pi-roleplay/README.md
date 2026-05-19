@@ -5,12 +5,12 @@ Roleplay tools and character management for pi.
 ## Features
 
 - `/rp` — Roleplay hub: create, start, list, or delete characters
-- `finish_character` tool — Finalize a character sheet and start a roleplay session
+- `finish_character` tool — Finalize a character sheet, save it, and create a roleplay session
 - `/create-subsession` — Create a new session from an encoded payload
 
 ## Character storage
 
-Characters are stored as JSON files in this extension's `characters/` directory. Each character has a Markdown character sheet.
+Characters are stored as JSON files in `~/.pi/agent/pi-roleplay/characters/`. Each character has a Markdown character sheet.
 
 ## Companion mode
 

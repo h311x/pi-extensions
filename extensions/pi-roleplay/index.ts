@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { StoredCharacter } from "./characters.js";
 import {
@@ -27,10 +27,26 @@ function decodePayload(encoded: string): CreateSubsessionPayload {
 	return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
 }
 
+function isValidPayload(payload: CreateSubsessionPayload): boolean {
+	if (!payload || typeof payload !== "object") return false;
+	if (payload.mode !== undefined && typeof payload.mode !== "string") return false;
+	if (payload.sessionName !== undefined && typeof payload.sessionName !== "string") return false;
+	if (payload.parentSession !== undefined && typeof payload.parentSession !== "string") return false;
+	if (payload.customEntries !== undefined && !Array.isArray(payload.customEntries)) return false;
+	if (payload.customMessages !== undefined && !Array.isArray(payload.customMessages)) return false;
+	for (const entry of payload.customEntries ?? []) {
+		if (!entry || typeof entry.customType !== "string") return false;
+	}
+	for (const message of payload.customMessages ?? []) {
+		if (!message || typeof message.customType !== "string" || typeof message.content !== "string") return false;
+	}
+	return true;
+}
+
 export default function roleplayExtension(pi: ExtensionAPI) {
 	// ----- Subsession creation -----
 
-	async function runCreateSubsession(payload: CreateSubsessionPayload, ctx: ExtensionContext): Promise<boolean> {
+	async function runCreateSubsession(payload: CreateSubsessionPayload, ctx: ExtensionCommandContext): Promise<boolean> {
 		await ctx.waitForIdle();
 
 		const result = await ctx.newSession({
@@ -62,7 +78,7 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 		return true;
 	}
 
-	async function createRoleplaySessionFromCharacter(character: StoredCharacter, ctx: ExtensionContext): Promise<boolean> {
+	async function createRoleplaySessionFromCharacter(character: StoredCharacter, ctx: ExtensionCommandContext): Promise<boolean> {
 		const payload: CreateSubsessionPayload = {
 			mode: "roleplay",
 			sessionName: `Roleplay: ${character.name}`,
@@ -107,19 +123,27 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 			if (!markdown) {
 				return {
 					content: [{ type: "text", text: "Cannot finalize the character because the Markdown sheet is empty." }],
+					details: {},
 					isError: true,
 				};
 			}
 
 			const saved = saveCharacter(characterName, markdown);
-
-			ctx.ui.notify(`Character saved: ${saved.name}. Use /rp to start roleplay from saved characters.`, "info");
+			const created = await createRoleplaySessionFromCharacter(saved, ctx as unknown as ExtensionCommandContext);
+			ctx.ui.notify(
+				created
+					? `Character saved: ${saved.name}. Roleplay session created.`
+					: `Character saved: ${saved.name}. Start from /rp when ready.`,
+				"info",
+			);
 
 			return {
 				content: [
 					{
 						type: "text",
-						text: `Character finalized and saved as "${saved.name}" (id: ${saved.id}). Use /rp to start roleplay from saved characters.\n\n${saved.markdown}`,
+						text: created
+							? `Character finalized and saved as "${saved.name}" (id: ${saved.id}). Created a roleplay session.`
+							: `Character finalized and saved as "${saved.name}" (id: ${saved.id}).`,
 					},
 				],
 				details: { characterName: saved.name, characterId: saved.id },
@@ -166,7 +190,13 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 
 	pi.registerCommand("rp", {
 		description: "Roleplay hub: create, start, list, or delete characters",
-		handler: async (_args, ctx) => {
+		handler: async (args, ctx) => {
+			const inlinePick = args?.trim();
+			if (inlinePick) {
+				const selected = await pickRoleplayCharacter(inlinePick, ctx);
+				if (selected) await createRoleplaySessionFromCharacter(selected, ctx);
+				return;
+			}
 			const choice = await ctx.ui.select("Roleplay:", [
 				"Start from saved character",
 				"Create character",
@@ -205,9 +235,13 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 		handler: async (args, ctx) => {
 			let payload: CreateSubsessionPayload;
 			try {
-				payload = decodePayload(args.trim());
+				payload = decodePayload((args ?? "").trim());
 			} catch (err) {
 				ctx.ui.notify(`Invalid create-subsession payload: ${err instanceof Error ? err.message : String(err)}`, "error");
+				return;
+			}
+			if (!isValidPayload(payload)) {
+				ctx.ui.notify("Invalid create-subsession payload shape.", "error");
 				return;
 			}
 

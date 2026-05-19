@@ -5,6 +5,14 @@
   "private": true,
   "keywords": ["pi-package"],
   "workspaces": ["extensions/*"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^24.7.2",
+    "typescript": "^5.9.3"
+  },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",

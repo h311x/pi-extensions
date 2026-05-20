@@ -78,11 +78,7 @@ export interface SessionOptions {
 }
 
 function classifyConnectError(errorMessage: string): RetryHint | undefined {
-  // Match both "Blob not found" and bare "not_found" code errors.
-  // Cursor returns `{ code: "not_found", message: "Error" }` for
-  // unrecognized model IDs (e.g. when effort suffixes are injected
-  // into models that lack effort variants).
-  if (/blob not found/i.test(errorMessage) || /not.?found/i.test(errorMessage)) {
+  if (/blob not found/i.test(errorMessage)) {
     return 'blob_not_found'
   }
   if (/resource_exhausted/i.test(errorMessage)) {
@@ -610,13 +606,6 @@ export class CursorSession {
   }
 
   private flushBatch(): void {
-    if (!this._batchHasCheckpoint) {
-      console.error('[cursor-session] flushing tool calls without a persisted checkpoint — recovery may fail', {
-        pendingExecs: this.pendingExecs.length,
-        convKey: this.options.convKey,
-      })
-    }
-
     this.batchState = 'flushed'
     this.streamState.checkpointAfterExec = false
     this._flushedExecs = [...this.pendingExecs]

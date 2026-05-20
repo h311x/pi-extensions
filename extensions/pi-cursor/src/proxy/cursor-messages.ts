@@ -123,11 +123,6 @@ function handleKvMessage(
     const { blobId } = kvMsg.message.value
     const blobIdKey = Buffer.from(blobId).toString('hex')
     const blobData = blobStore.get(blobIdKey)
-    if (!blobData) {
-      console.warn(
-        `[cursor-messages] GetBlob miss: key=${blobIdKey.slice(0, 16)}... (store has ${blobStore.size} blobs)`,
-      )
-    }
     sendKvResponse(kvMsg, 'getBlobResult', create(GetBlobResultSchema, blobData ? { blobData } : {}), sendFrame)
   } else if (kvCase === 'setBlobArgs') {
     const { blobId, blobData } = kvMsg.message.value
@@ -177,6 +172,5 @@ export function processServerMessage(msg: AgentServerMessage, ctx: MessageProces
     return true
   }
 
-  console.error(`[cursor-messages] unrecognized server message case: ${String(msgCase)}`)
   return false
 }

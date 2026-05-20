@@ -185,7 +185,6 @@ function decodeCheckpointState(
   try {
     return fromBinary(ConversationStateStructureSchema, checkpoint)
   } catch {
-    console.error('[proxy] Ignoring invalid stored checkpoint')
     return null
   }
 }
@@ -230,9 +229,6 @@ export function foldTurnsIntoSystemPrompt(
   // Compaction/context-summary turns are prioritized — they are reserved first
   // so that pre-compaction context survives truncation.  Real conversation turns
   // fill the remaining budget newest-first.
-  console.error(
-    `[proxy] Folded system prompt exceeds ${String(MAX_EFFECTIVE_PROMPT_BYTES)} bytes — truncating oldest turns`,
-  )
   const prefix = `${systemPrompt}\n\nPrevious conversation context (oldest turns truncated):\n`
   let budget = MAX_EFFECTIVE_PROMPT_BYTES - encoder.encode(prefix).byteLength
 
@@ -417,9 +413,6 @@ async function pumpAndFinalize(
         if (debugInfo) {
           logRetry(debugInfo.sid, debugInfo.rid, { attempt, hint: result.retryHint, delayMs })
         }
-        console.error(
-          `[proxy] Retry ${attempt}/${retryCtx.maxRetries} after ${result.retryHint}: ${result.error} (delay ${delayMs}ms)`,
-        )
         await sleep(delayMs)
 
         // On blob_not_found: reset conversation (new ID, clear blobs) and
@@ -437,7 +430,6 @@ async function pumpAndFinalize(
               }
             }
             persistConversation(sessionId, stored, convConfig)
-            console.error('[proxy] blob_not_found: rebuilt request with new conversation ID for retry')
           }
         }
 
@@ -781,9 +773,6 @@ export async function handleChatCompletion(
       const hint: RetryHint = result.retryHint ?? (result.response.status === 429 ? 'resource_exhausted' : 'timeout')
       const delayMs = retryDelayMs(hint)
       logRetry(sessionId, requestId, { attempt: nonStreamAttempt, hint, delayMs })
-      console.error(
-        `[proxy] Non-streaming retry ${nonStreamAttempt}/${cfg.maxRetries} (status ${result.response.status})`,
-      )
       await sleep(delayMs)
 
       // On blob_not_found: reset conversation and rebuild request (mirrors streaming path)
@@ -804,7 +793,6 @@ export async function handleChatCompletion(
           ).requestBytes,
         }
         persistConversation(sessionId, stored, convConfig)
-        console.error('[proxy] blob_not_found: rebuilt non-streaming request with new conversation ID for retry')
       }
 
       currentNonStreamSession = new CursorSession(currentNonStreamOptions)

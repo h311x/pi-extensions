@@ -223,8 +223,7 @@ async function fetchAvailableModels(accessToken: string): Promise<CursorModel[] 
     const models = decoded.models.flatMap((m) => normalizeAvailableModel(m))
 
     return models.length > 0 ? models.sort((a, b) => a.id.localeCompare(b.id)) : null
-  } catch (error) {
-    console.error('[models] AvailableModels RPC failed:', error instanceof Error ? error.message : String(error))
+  } catch {
     return null
   }
 }
@@ -279,8 +278,7 @@ async function fetchUsableModels(accessToken: string): Promise<CursorModel[] | n
 
     const models = normalizeLegacyModels(decoded.models)
     return models.length > 0 ? models : null
-  } catch (error) {
-    console.error('[models] GetUsableModels RPC failed:', error instanceof Error ? error.message : String(error))
+  } catch {
     return null
   }
 }
@@ -289,14 +287,12 @@ async function fetchUsableModels(accessToken: string): Promise<CursorModel[] | n
 export async function discoverCursorModels(accessToken: string): Promise<CursorModel[]> {
   const available = await fetchAvailableModels(accessToken)
   if (available && available.length > 0) {
-    console.error(`[models] Discovered ${String(available.length)} models via AvailableModels`)
     return available
   }
 
   // Fallback — basic model IDs
   const usable = await fetchUsableModels(accessToken)
   if (usable && usable.length > 0) {
-    console.error(`[models] Fell back to GetUsableModels: ${String(usable.length)} models`)
     return usable
   }
 

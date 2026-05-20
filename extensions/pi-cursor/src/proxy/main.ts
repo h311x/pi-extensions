@@ -109,7 +109,6 @@ async function main(): Promise<void> {
   let models: CursorModel[] = []
   try {
     models = await discoverCursorModels(config.accessToken)
-    console.error(`[proxy] Discovered ${String(models.length)} models`)
   } catch (error) {
     console.error('[proxy] Model discovery failed:', error)
   }
@@ -195,8 +194,6 @@ async function main(): Promise<void> {
 
     // 8. Start heartbeat monitor
     startHeartbeatMonitor()
-
-    console.error(`[proxy] Listening on port ${String(port)}`)
   })
 }
 

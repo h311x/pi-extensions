@@ -308,11 +308,6 @@ function sendUnknownExecResult(execMsg: ExecServerMessage, sendFrame: (data: Buf
     return
   }
   const resultFieldNo = argsField.no
-  console.warn('[tool-dispatch] rejected unknown exec type', {
-    case: execMsg.message.case,
-    field: resultFieldNo,
-    id: execMsg.id,
-  })
   const execClientMsg = create(ExecClientMessageSchema, {
     id: execMsg.id,
     execId: execMsg.execId,
@@ -532,8 +527,6 @@ function handleInteractionQuery(query: InteractionQuery, sendFrame: (data: Buffe
   let responseResult: { case: string; value: unknown } | undefined
 
   if (queryCase === 'webSearchRequestQuery') {
-    const searchTerm = query.query.value.args?.searchTerm ?? ''
-    console.warn('[tool-dispatch] rejected interaction query', { type: queryCase, searchTerm })
     responseResult = {
       case: 'webSearchRequestResponse',
       value: create(WebSearchRequestResponseSchema, {
@@ -544,7 +537,6 @@ function handleInteractionQuery(query: InteractionQuery, sendFrame: (data: Buffe
       }),
     }
   } else if (queryCase === 'exaSearchRequestQuery') {
-    console.warn('[tool-dispatch] rejected interaction query', { type: queryCase })
     responseResult = {
       case: 'exaSearchRequestResponse',
       value: create(ExaSearchRequestResponseSchema, {
@@ -555,7 +547,6 @@ function handleInteractionQuery(query: InteractionQuery, sendFrame: (data: Buffe
       }),
     }
   } else if (queryCase === 'exaFetchRequestQuery') {
-    console.warn('[tool-dispatch] rejected interaction query', { type: queryCase })
     responseResult = {
       case: 'exaFetchRequestResponse',
       value: create(ExaFetchRequestResponseSchema, {
@@ -586,9 +577,6 @@ function handleInteractionQuery(query: InteractionQuery, sendFrame: (data: Buffe
     }
   } else {
     // Unknown query type — send empty interaction response
-    console.error(
-      `[tool-dispatch] interactionQuery: unknown type ${queryCase} -- sending empty response for id=${String(queryId)}`,
-    )
   }
 
   // Build and send the interaction response
@@ -617,10 +605,6 @@ export function handleToolMessage(msg: AgentServerMessage, ctx: ToolDispatchCont
   }
 
   if (msgCase === 'execServerControlMessage') {
-    const ctrl = msg.message.value
-    if (ctrl.message.case === 'abort') {
-      console.error(`[tool-dispatch] exec ABORT for id=${String(ctrl.message.value.id)}`)
-    }
     return true
   }
 

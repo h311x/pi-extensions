@@ -129,21 +129,37 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 			}
 
 			const saved = saveCharacter(characterName, markdown);
-			const created = await createRoleplaySessionFromCharacter(saved, ctx as unknown as ExtensionCommandContext);
-			ctx.ui.notify(
-				created
-					? `Character saved: ${saved.name}. Roleplay session created.`
-					: `Character saved: ${saved.name}. Start from /rp when ready.`,
-				"info",
-			);
+
+			// Tools receive ExtensionContext, which lacks waitForIdle() and newSession().
+			// Queue a /create-subsession follow-up command to create the roleplay session
+			// after the current tool/turn finishes, using the pattern from the
+			// reload-runtime example.
+			const payload: CreateSubsessionPayload = {
+				mode: "roleplay",
+				sessionName: `Roleplay: ${saved.name}`,
+				parentSession: ctx.sessionManager.getSessionFile(),
+				customMessages: [
+					{
+						customType: "roleplay-character-sheet",
+						content: saved.markdown,
+						display: true,
+						details: {
+							characterName: saved.name,
+							characterId: saved.id,
+							sourceSession: ctx.sessionManager.getSessionFile(),
+							createdAt: new Date().toISOString(),
+						},
+					},
+				],
+			};
+			const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+			pi.sendUserMessage(`/create-subsession ${encoded}`, { deliverAs: "followUp" });
 
 			return {
 				content: [
 					{
 						type: "text",
-						text: created
-							? `Character finalized and saved as "${saved.name}" (id: ${saved.id}). Created a roleplay session.`
-							: `Character finalized and saved as "${saved.name}" (id: ${saved.id}).`,
+						text: `Character finalized and saved as "${saved.name}" (id: ${saved.id}). Creating roleplay session...`,
 					},
 				],
 				details: { characterName: saved.name, characterId: saved.id },

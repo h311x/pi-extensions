@@ -210,7 +210,7 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 				if (selected) await createRoleplaySessionFromCharacter(selected, ctx);
 			} else if (choice === "Create character") {
 				// Switch to roleplay-cc mode via /mode command
-				pi.sendUserMessage("/mode roleplay-cc");
+				pi.sendUserMessage("/mode roleplay-cc", { deliverAs: "followUp" });
 			} else if (choice === "List saved characters") {
 				const characters = listCharacters();
 				if (characters.length === 0) {

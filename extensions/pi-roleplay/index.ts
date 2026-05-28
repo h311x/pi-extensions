@@ -23,25 +23,7 @@ interface CreateSubsessionPayload {
 	}>;
 }
 
-function decodePayload(encoded: string): CreateSubsessionPayload {
-	return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
-}
 
-function isValidPayload(payload: CreateSubsessionPayload): boolean {
-	if (!payload || typeof payload !== "object") return false;
-	if (payload.mode !== undefined && typeof payload.mode !== "string") return false;
-	if (payload.sessionName !== undefined && typeof payload.sessionName !== "string") return false;
-	if (payload.parentSession !== undefined && typeof payload.parentSession !== "string") return false;
-	if (payload.customEntries !== undefined && !Array.isArray(payload.customEntries)) return false;
-	if (payload.customMessages !== undefined && !Array.isArray(payload.customMessages)) return false;
-	for (const entry of payload.customEntries ?? []) {
-		if (!entry || typeof entry.customType !== "string") return false;
-	}
-	for (const message of payload.customMessages ?? []) {
-		if (!message || typeof message.customType !== "string" || typeof message.content !== "string") return false;
-	}
-	return true;
-}
 
 export default function roleplayExtension(pi: ExtensionAPI) {
 	// ----- Subsession creation -----
@@ -130,36 +112,11 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 
 			const saved = saveCharacter(characterName, markdown);
 
-			// Tools receive ExtensionContext, which lacks waitForIdle() and newSession().
-			// Queue a /create-subsession follow-up command to create the roleplay session
-			// after the current tool/turn finishes, using the pattern from the
-			// reload-runtime example.
-			const payload: CreateSubsessionPayload = {
-				mode: "roleplay",
-				sessionName: `Roleplay: ${saved.name}`,
-				parentSession: ctx.sessionManager.getSessionFile(),
-				customMessages: [
-					{
-						customType: "roleplay-character-sheet",
-						content: saved.markdown,
-						display: true,
-						details: {
-							characterName: saved.name,
-							characterId: saved.id,
-							sourceSession: ctx.sessionManager.getSessionFile(),
-							createdAt: new Date().toISOString(),
-						},
-					},
-				],
-			};
-			const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
-			pi.sendUserMessage(`/create-subsession ${encoded}`, { deliverAs: "followUp" });
-
 			return {
 				content: [
 					{
 						type: "text",
-						text: `Character finalized and saved as "${saved.name}" (id: ${saved.id}). Creating roleplay session...`,
+						text: `Character finalized and saved as "${saved.name}" (id: ${saved.id}). Use /rp to start roleplay.`,
 					},
 				],
 				details: { characterName: saved.name, characterId: saved.id },
@@ -243,24 +200,5 @@ export default function roleplayExtension(pi: ExtensionAPI) {
 		},
 	});
 
-	// ----- /create-subsession command -----
 
-	pi.registerCommand("create-subsession", {
-		description: "Create a new session from an encoded payload",
-		handler: async (args, ctx) => {
-			let payload: CreateSubsessionPayload;
-			try {
-				payload = decodePayload((args ?? "").trim());
-			} catch (err) {
-				ctx.ui.notify(`Invalid create-subsession payload: ${err instanceof Error ? err.message : String(err)}`, "error");
-				return;
-			}
-			if (!isValidPayload(payload)) {
-				ctx.ui.notify("Invalid create-subsession payload shape.", "error");
-				return;
-			}
-
-			await runCreateSubsession(payload, ctx);
-		},
-	});
 }

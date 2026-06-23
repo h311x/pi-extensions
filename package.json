@@ -9,9 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/jsdom": "^21.1.7",
-    "@types/node": "^24.7.2",
-    "typescript": "^5.9.3"
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^26.0.0",
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
